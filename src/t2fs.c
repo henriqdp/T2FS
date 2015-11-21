@@ -3,13 +3,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void read_superblock(){
+  if(DEBUG_ON){
+    printf("Attepmting to read superblock.\n\n");
+  }
+  char read_buffer[256];
+  read_sector(0, read_buffer);
+}
+
 
 int identify2 (char *name, int size){
+  if(!superblock_read){
+    read_superblock();
+  }
+  printf("Identificacao dos autores do trabalho:\n");
+  printf("1) Henrique de Paula Lopes - matricula 295689\n");
   return 0;
 }
 
 FILE2 create2 (char *filename){
-
+  FILE2 file = 0;
+  return file;
 }
 
 int delete2 (char *filename){
@@ -17,7 +31,8 @@ int delete2 (char *filename){
 }
 
 FILE2 open2 (char *filename){
-  return NULL;
+  FILE2 retorno = 0;
+  return retorno;
 }
 
 int close2 (FILE2 handle){
@@ -45,7 +60,8 @@ int rmdir2 (char *pathname){
 }
 
 DIR2 opendir2 (char *pathname){
-
+  DIR2 dir = 0;
+  return dir;
 }
 
 int readdir2 (DIR2 handle, DIRENT2 *dentry){

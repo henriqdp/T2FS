@@ -3,6 +3,9 @@
 #ifndef __LIBT2FS___
 #define __LIBT2FS___
 
+#define DEBUG_ON 1
+
+#include "./apidisk.h"
 
 typedef int FILE2;
 typedef int DIR2;
@@ -10,6 +13,14 @@ typedef int DIR2;
 typedef unsigned char BYTE;
 typedef unsigned short int WORD;
 typedef unsigned int DWORD;
+
+typedef enum{
+  false = 0,
+  true = 1
+} Bool;
+
+Bool superblock_read = false;
+
 
 /** Superbloco */
 struct t2fs_superbloco {
@@ -36,8 +47,8 @@ struct t2fs_superbloco {
 struct t2fs_record {
     BYTE    TypeVal;                   /* Tipo da entrada. Indica se o registro é inválido (0x00), arquivo (0x01) ou diretório (0x02) */
     char    name[MAX_FILE_NAME_SIZE];  /* Nome do arquivo. : string com caracteres ASCII (0x21 até 0x7A), case sensitive. */
-	DWORD	bytesFileSize	           /* Tamanho do arquivo, em bytes. */
-	WORD	firstCluster	           /* número do primeiro cluster de dados correspondente a essa entrada de diretório. */
+	DWORD	bytesFileSize;	           /* Tamanho do arquivo, em bytes. */
+	WORD	firstCluster;	           /* número do primeiro cluster de dados correspondente a essa entrada de diretório. */
 } __attribute__((packed));
 
 
@@ -46,6 +57,9 @@ typedef struct {
     int fileType;                       /* Indica se é arquivo (0) ou diretório (1) */
     unsigned long fileSize;             /* número de bytes do arquivo */
 } DIRENT2;
+
+
+void read_superblock();
 
 
 /*-----------------------------------------------------------------------------
