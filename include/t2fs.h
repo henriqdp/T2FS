@@ -5,7 +5,6 @@
 
 #define DEBUG_ON 1
 
-#include "./apidisk.h"
 
 typedef int FILE2;
 typedef int DIR2;

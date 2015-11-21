@@ -1,14 +1,22 @@
 #include "../include/t2fs.h"
-
+#include "../include/apidisk.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 void read_superblock(){
   if(DEBUG_ON){
-    printf("Attepmting to read superblock.\n\n");
+    printf("Tentando ler superblock.\n\n");
   }
   char read_buffer[256];
-  read_sector(0, read_buffer);
+  int resultado = read_sector(0, read_buffer);
+  if(resultado != 0){
+    if(DEBUG_ON)
+      printf("Erro na leitura do superbloco! Erro numero %d\n", resultado);
+  }
+  else{
+    if(DEBUG_ON)
+      printf("Dados lidos com sucesso!\n");
+  }
 }
 
 
