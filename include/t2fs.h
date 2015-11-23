@@ -3,8 +3,10 @@
 #ifndef __LIBT2FS___
 #define __LIBT2FS___
 
-#define DEBUG_ON 1
 
+#include <stdlib.h>
+
+#define DEBUG_ON 1
 
 typedef int FILE2;
 typedef int DIR2;
@@ -17,9 +19,6 @@ typedef enum{
   false = 0,
   true = 1
 } Bool;
-
-Bool superblock_read = false;
-
 
 /** Superbloco */
 struct t2fs_superbloco {
@@ -57,7 +56,21 @@ typedef struct {
     unsigned long fileSize;             /* número de bytes do arquivo */
 } DIRENT2;
 
+typedef struct t2fs_superbloco superbloco_t;
+typedef struct t2fs_record     record_t;
 
+superbloco_t *_superbloco = NULL;
+
+Bool superblock_read = false;
+
+
+typedef struct sector_descriptor{
+	short unsigned int current_index;
+	char buffer[256];
+} sector_t;
+
+
+/* funcao usada para ler o superbloco do disco e preencher a struct correspondente */
 void read_superblock();
 
 
