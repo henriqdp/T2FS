@@ -1,12 +1,15 @@
-
-
 #ifndef __LIBT2FS___
 #define __LIBT2FS___
 
 
 #include <stdlib.h>
 
-#define DEBUG_ON 1
+#define DEBUG_ON 0
+#define CURR_DIR 0
+
+#define FINAL_CLUSTER 65535
+#define FREE_CLUSTER  0
+#define BAD_CLUSTER   65534
 
 typedef int FILE2;
 typedef int DIR2;
@@ -17,7 +20,7 @@ typedef unsigned int DWORD;
 
 typedef enum{
   false = 0,
-  true = 1
+  true = 1	
 } Bool;
 
 /** Superbloco */
@@ -59,19 +62,35 @@ typedef struct {
 typedef struct t2fs_superbloco superbloco_t;
 typedef struct t2fs_record     record_t;
 
-superbloco_t *_superbloco = NULL;
+superbloco_t *_superbloco;
+Bool superblock_read;
 
-Bool superblock_read = false;
+typedef struct FAT_descriptor{
+	unsigned int size_in_sectors;
+	WORD *data;
+}fat_t;
 
+typedef struct directory_descriptor{
+	char *fullpath;
+	unsigned short first_cluster;
+	unsigned short current_cluster;
+	unsigned int current_entry;
+	unsigned short cluster_index;
+	Bool active;
+	Bool is_final_cluster;
+} dir_t;
 
 typedef struct sector_descriptor{
 	short unsigned int current_index;
 	char buffer[256];
 } sector_t;
 
+fat_t *FAT;
+dir_t *current_directory;
+dir_t *working_directory;
 
-/* funcao usada para ler o superbloco do disco e preencher a struct correspondente */
-void read_superblock();
+dir_t directories[20];
+
 
 
 /*-----------------------------------------------------------------------------

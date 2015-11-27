@@ -17,11 +17,11 @@ TST_DIR=./teste
 
 
 all:
-	$(CC) -c $(SRC_DIR)/* -Wall
-	ar crs libt2fs.a *.o $(LIB_DIR)/apidisk.o
-	mv libt2fs.a $(LIB_DIR)
-	gcc -o sisop $(TST_DIR)/teste.c -L$(LIB_DIR) -lt2fs -Wall
-	mv sisop *.o $(BIN_DIR)
+	$(CC) -c -I$(INC_DIR) $(SRC_DIR)/* -Wall
+	mv *.o $(BIN_DIR)
+	ar crs $(LIB_DIR)/libt2fs.a $(BIN_DIR)/*.o $(LIB_DIR)/apidisk.o 
+	gcc -o sisop -I$(INC_DIR) $(TST_DIR)/*.c -L$(LIB_DIR) -lt2fs -Wall
+	mv sisop $(BIN_DIR)
 
 clean:
-	rm -rf $(LIB_DIR)/*.a $(BIN_DIR)/* $(SRC_DIR)/*~ $(INC_DIR)/*~ *~ *.o
+	rm -rf $(LIB_DIR)/*.a $(LIB_DIR)/t2fs.o $(LIB_DIR)/aux.o $(BIN_DIR)/* $(SRC_DIR)/*~ $(INC_DIR)/*~ *~ *.o
