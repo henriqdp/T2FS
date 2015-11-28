@@ -135,29 +135,12 @@ int chdir2 (char *pathname){
   if(!superblock_read){
     read_superblock();
   }
-  switch(pathname[0]){
-    case '/':
-      change_dir(ABSOLUTE, pathname);
-      break;
-    case '.':
-      if(strcmp(pathname, ".") == 0 || strcmp(pathname, "./") == 0)
-        return 0;
-      if(strcmp(pathname, "..") == 0 || strcmp(pathname, "../") == 0){
-        if(strcmp(current_directory->fullpath, "/") == 0)
-          return 0;
-        else{
-          return change_dir(RELATIVE, pathname);
-        }
-      }
-      break;
-    default:
-         if(pathname[strlen(pathname) - 1] == '/')
-            pathname[strlen(pathname) - 1] = '\0';
-          mirror_paths(CURR_TO_WORK);
-         return change_dir(RELATIVE, pathname);
-      break;
-  }
-  return 0;
+  if(pathname[0] == '/')
+    set_working_to_root();
+  else
+    mirror_paths(CURR_TO_WORK);
+
+  return change_dir(pathname, false);
 }
 
 int getcwd2 (char *pathname, int size){

@@ -160,6 +160,8 @@ int read_superblock(){
 int read_next_entry(dir_t *directory, DIRENT2 *dentry, WORD *cluster){
 	sector_t *sector;
 	int current_entry_within_sector, real_sector;
+	if(DEBUG_ON)
+		printf("Primeiro cluster: %d\n", directory->first_cluster);
 	if(directory->first_cluster == _superbloco->RootSectorStart){
 		real_sector = directory->current_cluster + directory->current_entry / (SECTOR_SIZE/32);
 
@@ -191,7 +193,8 @@ int read_next_entry(dir_t *directory, DIRENT2 *dentry, WORD *cluster){
 		}
 		directory->current_entry++;
 		if(directory->current_entry % ((SECTOR_SIZE/32)*_superbloco->SectorPerCluster) == 0){
-
+			if(DEBUG_ON)
+				printf("TEM QUE TROCAR DE CLSTERRRR\n\n\n");
 			if(directory->is_final_cluster == true){
 				rewind_dir(directory);
 				return -1;
@@ -270,75 +273,97 @@ void rewind_dir(dir_t *dir){
 	dir->current_entry   = 0;
 }
 
-int change_dir(int mode, char *path){
-	if(strlen(path) == 0){
+
+
+void set_working_to_root(){
+	working_directory->first_cluster    = _superbloco->RootSectorStart;
+	working_directory->current_cluster = _superbloco->RootSectorStart;
+	strcpy(working_directory->fullpath, "/");
+	working_directory->current_entry = 0;
+}
+
+int change_dir(char *path, Bool subsequent){
+
+	char *next_dir;
+	if(subsequent)
+		next_dir = strtok(NULL, "/");
+	else
+		next_dir = strtok(path, "/");
+	if(next_dir == NULL){
 		mirror_paths(WORK_TO_CURR);
-		rewind_dir(current_directory);
 		return 0;
 	}
-	if(mode == RELATIVE){
-		rewind_dir(working_directory);
-		
-		char *next_destination = (char *) calloc(strlen(path),sizeof(char));
-		
-		int i = 0;
-		while(*(path + i) != '/' && *(path + i) != '\0'){
-			*(next_destination + i) = *(path + i);
-			i++;
-		}
-		next_destination[i] = '\0';
-		WORD clusterNo;
-		DIRENT2 *entry = (DIRENT2 *) malloc(sizeof(DIRENT2));
-		Bool found = false;
-		while(!found && read_next_entry(working_directory, entry, &clusterNo) != -1){
-			if(strcmp(next_destination, entry->name) == 0){
-				found = true;
-			}
-		}
 
-		if(found){
-			if(DEBUG_ON)
-				printf("Subdiretorio encontrado: %s\n", next_destination);
-			if(working_directory->fullpath[strlen(working_directory->fullpath)-1] != '/'){
-				working_directory->fullpath[strlen(working_directory->fullpath)] = '\0';
-				working_directory->fullpath[strlen(working_directory->fullpath)-1] = '/';
-			}
-			strcpy(working_directory->fullpath + strlen(working_directory->fullpath), next_destination);
+	if(DEBUG_ON){
+			printf("Procurando por diretorio: ");	
+			puts(next_dir);
+	}
 
-			if(strlen(next_destination) == strlen(path)){
-				working_directory->first_cluster = clusterNo;
-				working_directory->current_cluster = clusterNo;
-				if(FAT->data[working_directory->first_cluster-2] == FINAL_CLUSTER)
-					working_directory->is_final_cluster = true;
-				else
-					working_directory->is_final_cluster = false;
-				working_directory->current_entry = 0;
-				mirror_paths(WORK_TO_CURR);
-				free(next_destination);
-				free(entry);
-				return 0;
-			}else{
-				free(next_destination);
-				free(entry);
-				return change_dir(RELATIVE, path + strlen(next_destination)); 
-			}
-			
-		}else{
+	if(working_directory->first_cluster == _superbloco->RootSectorStart)
+		if(strcmp(next_dir, ".") == 0 || strcmp(next_dir, "..") == 0)
+			return change_dir(path, true);
+
+	DIRENT2 *entry = (DIRENT2 *) malloc(sizeof(DIRENT2));
+	Bool found = false;
+	WORD clusterNo;
+	rewind_dir(working_directory);
+
+	while(!found && read_next_entry(working_directory, entry, &clusterNo) != -1){
+		if(strcmp(next_dir, entry->name) == 0)
+			found = true;
+	}
+
+	if(found){
+		if(DEBUG_ON)
+			printf("Diretorio encontrado.\n");
+		if(entry->fileSize != 0){
 			if(DEBUG_ON)
-				printf("Subdiretorio nao encontrado: %s\n", next_destination);
-			free(next_destination);
-			free(entry);
+				printf("Erro! Arquivo especificado nao e' um diretorio.\n");
 			return -1;
 		}
-		return 0;
+		if(clusterNo == 0){
+			set_working_to_root();
+			return change_dir(path, true);
+		}
+		else{
+			working_directory->first_cluster = clusterNo;
+			working_directory->current_cluster = clusterNo;
+			working_directory->current_entry = 0;
+			
+			if(FAT->data[clusterNo-2] == FINAL_CLUSTER)
+				working_directory->is_final_cluster = true;
+			else
+				working_directory->is_final_cluster = false;
+
+			if(strcmp(next_dir, ".") != 0){
+				if(strcmp(next_dir, "..") == 0){
+					char *aux = working_directory->fullpath + strlen(working_directory->fullpath) - 1;
+					if(*aux == '/')
+						*(aux--) = '\0';
+					while(*aux != '/'){
+						*aux = '\0';
+						aux -= 1;
+					}
+				}
+				else{
+					if (working_directory->fullpath[strlen(working_directory->fullpath) - 1] != '/')
+						strcat(working_directory->fullpath, "/");
+					strcat(working_directory->fullpath, next_dir);
+				}
+			}
+			free(entry);
+			return change_dir(path, true);
+		}
 	}
 	else{
-		rewind_dir(working_directory);
-		strcpy(working_directory->fullpath, "/");
-		working_directory->first_cluster = _superbloco->RootSectorStart;
-		working_directory->current_entry = 0;
-		working_directory->is_final_cluster = true;
-
-		return change_dir(RELATIVE, path + 1);
+		free(entry);
+		if(DEBUG_ON)
+			printf("Diretorio especificado nao encontrado.\n");
+		return -1;
 	}
+	return 0;
+}
+
+int get_first_invalid_entry(){
+	
 }
