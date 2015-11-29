@@ -22,6 +22,7 @@ void rewind_dir(dir_t *dir);
 int change_dir(char *path, Bool subsequent);
 
 int get_first_invalid_entry();
+Bool split_path(char *path);
 
-
+Bool is_valid(char *name);
 #endif

@@ -63,9 +63,16 @@ int main(int argc, char **argv){
    		continue;
    	}
 
+      if(strcmp(command, "mkdir") == 0){
+         scanf("%s", argument);
+         mkdir2(argument);
+         continue;
+      }
+
 
 
    	printf("Comando desconhecido! Por favor, va ler o manual.\n");
+      fflush(stdin);
    }
   return 0;
 }

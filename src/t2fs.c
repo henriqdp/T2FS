@@ -75,7 +75,25 @@ int mkdir2 (char *pathname){
   if(!superblock_read){
     read_superblock();
   }
-  return 0;
+  Bool split = split_path(pathname);
+  if(split){
+    printf("Caminho dividido: ");
+    puts(pathname);
+    printf("Nome do diretorio: ");
+    puts(pathname + strlen(pathname) + 1);
+  }
+  else{
+    printf("Nome do diretorio a ser criado localmente: ");
+    puts(pathname);
+
+    /*
+      casos:
+        - caminho relativo X caminho absoluto
+        - caminho absoluto com subdiretorio a ser criado no raiz X qqr outro lugar
+        
+    */
+
+  }return 0;
 }
 
 int rmdir2 (char *pathname){
@@ -154,3 +172,5 @@ int getcwd2 (char *pathname, int size){
   }
   return 0;
 }
+
+

@@ -365,5 +365,34 @@ int change_dir(char *path, Bool subsequent){
 }
 
 int get_first_invalid_entry(){
-	
+	return 0;
 }
+
+Bool split_path(char *path){
+	char *aux = path + strlen(path) - 1;
+	if(*aux == '/')
+		*aux = '\0';
+	while(*aux != '/' && aux != path)
+		aux--;
+	if(aux != path){
+		*aux = '\0';
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+Bool is_valid(char *name){
+	Bool valid = true;
+	char *aux = name;
+	while(valid && *aux != '\0'){
+		if((*aux < '0' && *aux > '9') && (*aux < 'a' && *aux > 'z') && (*aux < 'A' && *aux > 'Z'))
+			valid = false;
+		else
+			aux++;
+	}
+	return valid;
+
+}
+
