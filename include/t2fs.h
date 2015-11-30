@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 
-#define DEBUG_ON 0
+#define DEBUG_ON 1
 #define CURR_DIR 0
 
 #define FINAL_CLUSTER 65535

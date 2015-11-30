@@ -107,29 +107,49 @@ DIR2 opendir2 (char *pathname){
   if(!superblock_read){
     read_superblock();
   }
-  DIR2 dir = 0;
-
-  return dir;
+  
+  if(pathname[0] == '/')
+    set_working_to_root();
+  else
+    mirror_paths(CURR_TO_WORK);
+  char *pathname_aux = (char *) calloc(1024, sizeof(char));
+  strcpy(pathname_aux, pathname);
+  int result = change_dir(pathname_aux, false);
+  free(pathname_aux);
+  if(result < 0)
+    return -1;
+  else{
+    DIR2 result = (DIR2) get_handler(DIR_HANDLER);
+    if(result < 0)
+      return -1;
+    else{
+      directories[result].first_cluster = working_directory->first_cluster;
+      directories[result].current_cluster = working_directory->first_cluster;
+      directories[result].current_entry = 0;
+      if(directories[result].fullpath == NULL)
+        directories[result].fullpath = (char *) calloc(1024, sizeof(char));
+      strcpy(directories[result].fullpath, working_directory->fullpath);
+      return result;
+    }
+  }
 }
 
 int readdir2 (DIR2 handle, DIRENT2 *dentry){
   if(!superblock_read){
     read_superblock();
   }
+  WORD cluster;
   if(handle == CURR_DIR){
-    WORD cluster;
     return read_next_entry(current_directory, dentry, &cluster);
   }
   else{
     if(handle > 20 || handle < 0 || directories[handle-1].active == false){
-      printf("Erro em readdir2: handle invalido!\n");
+      if(DEBUG_ON)
+        printf("Erro em readdir2: handle invalido!\n");
       return -1;
     }
     else{
-      /*
-        TODO
-      */
-      return 0;
+      return read_next_entry(&(directories[handle]), dentry, &cluster);
     }
   }
 }

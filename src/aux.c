@@ -283,12 +283,13 @@ void set_working_to_root(){
 }
 
 int change_dir(char *path, Bool subsequent){
-
 	char *next_dir;
 	if(subsequent)
 		next_dir = strtok(NULL, "/");
 	else
+	{
 		next_dir = strtok(path, "/");
+	}
 	if(next_dir == NULL){
 		mirror_paths(WORK_TO_CURR);
 		return 0;
@@ -396,3 +397,23 @@ Bool is_valid(char *name){
 
 }
 
+int get_handler(int type){
+	Bool found = false;
+	int result = -1;
+	int i = 0;
+	switch(type){
+		case DIR_HANDLER:
+			while(!found && i < 20){
+				if(directories[i].active == false){
+					result = i;
+					directories[i].active = true;
+					found = true;
+				}
+				i++;
+			}
+			break;
+		case FILE_HANDLER:
+			break;
+	}
+	return result;
+}

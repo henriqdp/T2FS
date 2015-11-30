@@ -1,6 +1,9 @@
 #ifndef AUX_H
 #define AUX_H
 
+#define DIR_HANDLER  0
+#define FILE_HANDLER 1
+
 #define CURR_TO_WORK 2
 #define WORK_TO_CURR 3
 
@@ -25,4 +28,6 @@ int get_first_invalid_entry();
 Bool split_path(char *path);
 
 Bool is_valid(char *name);
+
+int get_handler(int type);
 #endif

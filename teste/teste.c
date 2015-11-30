@@ -74,5 +74,6 @@ int main(int argc, char **argv){
    	printf("Comando desconhecido! Por favor, va ler o manual.\n");
       fflush(stdin);
    }
+
   return 0;
 }
