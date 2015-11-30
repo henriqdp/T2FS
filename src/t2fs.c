@@ -47,6 +47,12 @@ int close2 (FILE2 handle){
   if(!superblock_read){
     read_superblock();
   }
+  if(handle < 0 || handle >= 20 || files[handle].active == false){
+    if(DEBUG_ON)
+      printf("Handle de arquivo invalido.\n");
+  }
+  else
+    files[handle].active = false;
   return 0;
 }
 
@@ -68,6 +74,18 @@ int seek2 (FILE2 handle, unsigned int offset){
   if(!superblock_read){
     read_superblock();
   }
+  if(handle < 0 || handle >= 20 || files[handle].active == false || offset > files[handle].size){
+    if(DEBUG_ON)
+      printf("Handle de arquivo invalido.\n");
+  }
+
+  if(offset != -1)
+    files[handle].current_byte = offset;
+  else{
+    files[handle].current_byte = files[handle].size;
+  }
+
+
   return 0;
 }
 
@@ -76,24 +94,35 @@ int mkdir2 (char *pathname){
     read_superblock();
   }
   Bool split = split_path(pathname);
+  int result;
   if(split){
-    printf("Caminho dividido: ");
-    puts(pathname);
-    printf("Nome do diretorio: ");
-    puts(pathname + strlen(pathname) + 1);
+    if(DEBUG_ON){
+      printf("Diretorio no qual sera criado o arquivo: ");
+      puts(pathname);
+      printf("Nome do diretorio: ");
+      puts(pathname + strlen(pathname) + 1);
+    }
+    result = change_dir(pathname, false);
+    if(result < 0)
+      return -1;
+    else
+      return mkdir_relative(pathname + strlen(pathname) + 1);
   }
   else{
-    printf("Nome do diretorio a ser criado localmente: ");
-    puts(pathname);
+    if(DEBUG_ON){
+      printf("Nome do diretorio a ser criado: ");
+        puts(pathname);
+      }
 
-    /*
-      casos:
-        - caminho relativo X caminho absoluto
-        - caminho absoluto com subdiretorio a ser criado no raiz X qqr outro lugar
-        
-    */
-
-  }return 0;
+    if(pathname[0] == '/'){
+      set_working_to_root();
+      return mkdir_relative(pathname + 1);
+    }
+    else{
+      mirror_paths(CURR_TO_WORK);
+      return mkdir_relative(pathname);
+    }
+  }
 }
 
 int rmdir2 (char *pathname){
@@ -108,10 +137,6 @@ DIR2 opendir2 (char *pathname){
     read_superblock();
   }
   
-  if(pathname[0] == '/')
-    set_working_to_root();
-  else
-    mirror_paths(CURR_TO_WORK);
   char *pathname_aux = (char *) calloc(1024, sizeof(char));
   strcpy(pathname_aux, pathname);
   int result = change_dir(pathname_aux, false);
@@ -129,7 +154,7 @@ DIR2 opendir2 (char *pathname){
       if(directories[result].fullpath == NULL)
         directories[result].fullpath = (char *) calloc(1024, sizeof(char));
       strcpy(directories[result].fullpath, working_directory->fullpath);
-      return result;
+      return result + 1;
     }
   }
 }
@@ -158,7 +183,7 @@ int closedir2 (DIR2 handle){
   if(!superblock_read){
     read_superblock();
   }
-  if(handle > 20 || handle < 0 || directories[handle-1].active == false){
+  if(handle > 20 || handle <= 0 || directories[handle-1].active == false){
     if(DEBUG_ON)
       printf("Erro em closedir2: handle invalido!\n");
     return -1;
@@ -173,12 +198,14 @@ int chdir2 (char *pathname){
   if(!superblock_read){
     read_superblock();
   }
-  if(pathname[0] == '/')
-    set_working_to_root();
-  else
-    mirror_paths(CURR_TO_WORK);
-
-  return change_dir(pathname, false);
+  
+  if(change_dir(pathname, false) == 0){
+    mirror_paths(WORK_TO_CURR);
+    return 0;
+  }
+  else{
+    return -1;
+  }
 }
 
 int getcwd2 (char *pathname, int size){

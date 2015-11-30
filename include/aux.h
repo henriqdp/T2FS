@@ -11,6 +11,11 @@
 #include "t2fs.h"
 
 sector_t *initialize_sector(int sector_number);
+int write_byte(sector_t *sector, BYTE byte);
+int write_word(sector_t *sector, WORD word);
+int write_dword(sector_t *sector, DWORD dword);
+int update_sector(sector_t *sector);
+int update_index(sector_t *sector, int new_sector_index);
 WORD read_word(sector_t* sector);
 BYTE read_byte(sector_t* sector);
 DWORD read_dword(sector_t* sector);
@@ -24,10 +29,15 @@ void set_working_to_root();
 void rewind_dir(dir_t *dir);
 int change_dir(char *path, Bool subsequent);
 
-int get_first_invalid_entry();
+
 Bool split_path(char *path);
 
 Bool is_valid(char *name);
 
 int get_handler(int type);
+int get_first_invalid_entry();
+int mkdir_relative(char *folder_name);
+
+int get_free_fat_index();
+int update_FAT();
 #endif

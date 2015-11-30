@@ -65,12 +65,14 @@ int main(int argc, char **argv){
 
       if(strcmp(command, "mkdir") == 0){
          scanf("%s", argument);
-         mkdir2(argument);
+         int result = mkdir2(argument);
+         if(result < 0){
+            printf("Erro na criacao do novo diretorio.\n");
+            printf("Pode ser que o caminho especificado seja invalido ou que o nome do novo diretorio contenha caracteres nao alfanumericos.\n");
+         }
          continue;
       }
-
-
-
+      
    	printf("Comando desconhecido! Por favor, va ler o manual.\n");
       fflush(stdin);
    }

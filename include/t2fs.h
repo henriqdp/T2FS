@@ -3,8 +3,9 @@
 
 
 #include <stdlib.h>
+#include "apidisk.h"
 
-#define DEBUG_ON 1
+#define DEBUG_ON 0
 #define CURR_DIR 0
 
 #define FINAL_CLUSTER 65535
@@ -80,16 +81,29 @@ typedef struct directory_descriptor{
 	Bool is_final_cluster;
 } dir_t;
 
+typedef struct file_descriptor{
+	char *filename;
+	int size;
+	unsigned short first_cluster;
+	unsigned short current_cluster;
+	unsigned int current_byte;
+	unsigned short folder_first_cluster;
+	Bool active;
+	Bool is_final_cluster;
+}file_t;
+
 typedef struct sector_descriptor{
 	short unsigned int current_index;
-	char buffer[256];
+	unsigned short sector_index;
+	char buffer[SECTOR_SIZE];
 } sector_t;
 
 fat_t *FAT;
 dir_t *current_directory;
 dir_t *working_directory;
 
-dir_t directories[20];
+dir_t  directories[20];
+file_t files[20];
 
 
 
