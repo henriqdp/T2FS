@@ -6,14 +6,14 @@
 #include <string.h>
 
 int write_byte(sector_t *sector, BYTE byte){
-	if(sector->current_index == (SECTOR_SIZE/32))
+	if(sector->current_index >= SECTOR_SIZE)
 		return -1;
 	sector->buffer[sector->current_index++] = byte;
 	return 0;
 }
 
 int write_word(sector_t *sector, WORD word){
-	if(sector->current_index == (SECTOR_SIZE/32))
+	if(sector->current_index >= SECTOR_SIZE)
 		return -1;
 	char aux = word % 256;
 	sector->buffer[sector->current_index++] = aux;
@@ -23,7 +23,7 @@ int write_word(sector_t *sector, WORD word){
 }
 
 int write_dword(sector_t *sector, DWORD dword){
-	if(sector->current_index == (SECTOR_SIZE/32))
+	if(sector->current_index >= SECTOR_SIZE)
 		return -1;
 	char aux = dword % 256;
 	sector->buffer[sector->current_index++] = aux;
@@ -193,10 +193,7 @@ int read_superblock(){
   current_directory->fullpath = (char *) calloc(1024, sizeof(char));
   memset(current_directory->fullpath, '\0', 1024);
   strcpy(current_directory->fullpath, "/");	
-  if(DEBUG_ON){
-    printf("Diretorio corrente: ");
-    printf("%s\n", current_directory->fullpath);
-  }
+
   current_directory->current_cluster = _superbloco->RootSectorStart;
   current_directory->first_cluster   = _superbloco->RootSectorStart;
   current_directory->current_entry   = 0;
@@ -204,17 +201,6 @@ int read_superblock(){
 
   working_directory = (dir_t *) malloc(sizeof(dir_t));
   working_directory->fullpath = (char *) calloc(1024, sizeof(char));
-
-  if(DEBUG_ON){
-  	printf("Current cluster: %hu\n", current_directory->current_cluster);
-  	printf("Current_entry:   %hu\n", current_directory->current_entry);
-  	printf("Cluster index:   %hu\n", current_directory->cluster_index);
-  	printf("Is final cluster? ");
-  	if(current_directory->is_final_cluster)
-  		printf("True.\n");
-  	else
-  		printf("False.\n");
-  }
 
   free(setor_superbloco);
   return 0;
@@ -446,6 +432,8 @@ Bool split_path(char *path){
 }
 
 Bool is_valid(char *name){
+	if(strlen(name) > MAX_FILE_NAME_SIZE)
+		return false;
 	Bool valid = true;
 	char *aux = name;
 	while(valid && *aux != '\0'){
@@ -588,10 +576,10 @@ int get_free_fat_index(){
 	int index = 0;
 	Bool found = false;
 	while(!found && index < (FAT->size_in_sectors)*(SECTOR_SIZE/2)){
-		if(!DEBUG_ON)
+		if(DEBUG_ON)
 			printf("Analisando endereco %d da fat. Valor: %d\n", index, FAT->data[index]);
 		if(FAT->data[index] == 0){
-			printf("FOUND IT!\n");
+			if(DEBUG_ON) printf("FOUND IT!\n");
 			found = true;
 		}
 		else
@@ -608,16 +596,13 @@ int update_entry(record_t new_record){
 	else{
 		int cluster_base_sector = _superbloco->DataSectorStart + (working_directory->current_cluster-2)*_superbloco->SectorPerCluster;
 		int real_sector = cluster_base_sector + (working_directory->current_entry / (SECTOR_SIZE/32));
-		printf("Entrada a ser gravada no setor %d\n", real_sector);
 		sector = initialize_sector(real_sector);
 	}
 
 	int result = 0;
 	result = seek_sector(sector, working_directory->current_entry % (SECTOR_SIZE/32));
-	printf("como assim!!\n");
 	if(result < 0)
 		return -1;
-	printf("como assim!!hein \n");
 	write_byte(sector, new_record.TypeVal);
 	int i;
 	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
@@ -627,6 +612,7 @@ int update_entry(record_t new_record){
 	write_word(sector, new_record.firstCluster);
 
 	update_sector(sector);
+	free(sector);
 
 	return 0;
 }
@@ -639,6 +625,7 @@ int mkdir_relative(char *folder_name){
 		return -1;
 	}
 
+
 	int entry_index = get_first_invalid_entry();
 	if(entry_index < 0)
 		return -1;
@@ -646,9 +633,6 @@ int mkdir_relative(char *folder_name){
 	int fat_index = get_free_fat_index();
 	if(fat_index < 0)
 		return -1;
-
-	printf("A entrada sera gravada na posicao %d do cluster.\n", working_directory->current_entry);
-
 	
 	record_t new_entry; 
 	new_entry.TypeVal = 2;
@@ -656,7 +640,7 @@ int mkdir_relative(char *folder_name){
 	strcpy(&(new_entry.name[0]), folder_name);
 	new_entry.firstCluster = fat_index;
 
-	if(!DEBUG_ON){
+	if(DEBUG_ON){
 		printf("Entrada da FAT livre para a gravacao do novo diretorio: %d\n", new_entry.firstCluster);
 		printf("Indice da entrada livre dentro do diretorio: %d\n", working_directory->current_entry);
 		printf("Nome do novo diretorio: %s\n", new_entry.name);

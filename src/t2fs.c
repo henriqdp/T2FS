@@ -96,7 +96,7 @@ int mkdir2 (char *pathname){
   Bool split = split_path(pathname);
   int result;
   if(split){
-    if(DEBUG_ON){
+    if(!DEBUG_ON){
       printf("Diretorio no qual sera criado o arquivo: ");
       puts(pathname);
       printf("Nome do diretorio: ");
@@ -109,7 +109,7 @@ int mkdir2 (char *pathname){
       return mkdir_relative(pathname + strlen(pathname) + 1);
   }
   else{
-    if(DEBUG_ON){
+    if(!DEBUG_ON){
       printf("Nome do diretorio a ser criado: ");
         puts(pathname);
       }
