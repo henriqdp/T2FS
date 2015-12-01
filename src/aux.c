@@ -194,8 +194,8 @@ int read_superblock(){
   memset(current_directory->fullpath, '\0', 1024);
   strcpy(current_directory->fullpath, "/");	
 
-  current_directory->current_cluster = _superbloco->RootSectorStart;
-  current_directory->first_cluster   = _superbloco->RootSectorStart;
+  current_directory->current_cluster = 0;
+  current_directory->first_cluster   = 0;
   current_directory->current_entry   = 0;
   current_directory->cluster_index   = 0;
 
@@ -212,8 +212,8 @@ int read_next_entry(dir_t *directory, DIRENT2 *dentry, WORD *cluster){
 
 	if(DEBUG_ON)
 		printf("Primeiro cluster: %d\n", directory->first_cluster);
-	if(directory->first_cluster == _superbloco->RootSectorStart){
-		real_sector = directory->current_cluster + directory->current_entry / (SECTOR_SIZE/32);
+	if(directory->first_cluster == 0){
+		real_sector = _superbloco->RootSectorStart + directory->current_entry / (SECTOR_SIZE/32);
 
 		if(real_sector >= _superbloco->DataSectorStart){
 			if(DEBUG_ON)
@@ -312,7 +312,7 @@ void mirror_paths(int way){
 void rewind_dir(dir_t *dir){
 	dir->current_cluster = dir->first_cluster;
 	dir->current_entry   = 0;
-	if(dir->first_cluster != _superbloco->RootSectorStart && FAT->data[dir->current_cluster-2] == FINAL_CLUSTER){
+	if(dir->first_cluster != 0 && FAT->data[dir->current_cluster-2] == FINAL_CLUSTER){
 		dir->is_final_cluster = true;
 	}
 	else{
@@ -323,7 +323,7 @@ void rewind_dir(dir_t *dir){
 
 
 void set_working_to_root(){
-	working_directory->first_cluster    = _superbloco->RootSectorStart;
+	working_directory->first_cluster    = 0;
 	working_directory->current_cluster = _superbloco->RootSectorStart;
 	strcpy(working_directory->fullpath, "/");
 	working_directory->current_entry = 0;
@@ -350,7 +350,7 @@ int change_dir(char *path, Bool subsequent){
 			puts(next_dir);
 	}
 
-	if(working_directory->first_cluster == _superbloco->RootSectorStart)
+	if(working_directory->first_cluster == 0)
 		if(strcmp(next_dir, ".") == 0 || strcmp(next_dir, "..") == 0)
 			return change_dir(path, true);
 
@@ -503,7 +503,7 @@ int get_first_invalid_entry(){
 	short i;
 	short type;
 	Bool found = false;
-	if(working_directory->first_cluster == _superbloco->RootSectorStart){
+	if(working_directory->first_cluster == 0){
 		int entries_in_root = (_superbloco->DataSectorStart - _superbloco->RootSectorStart) * (SECTOR_SIZE/32);
 		while(!found && working_directory->current_entry < entries_in_root){
 			sector = initialize_sector(_superbloco->RootSectorStart + (working_directory->current_entry / (SECTOR_SIZE/32)));
@@ -659,7 +659,7 @@ int mkdir_relative(char *folder_name){
 	strcpy(&(new_entry.name[0]), folder_name);
 	new_entry.firstCluster = fat_index;
 
-	if(!DEBUG_ON){
+	if(DEBUG_ON){
 		printf("Entrada da FAT livre para a gravacao do novo diretorio: %d\n", new_entry.firstCluster);
 		printf("Indice da entrada livre dentro do diretorio: %d\n", working_directory->current_entry);
 		printf("Nome do novo diretorio: %s\n", new_entry.name);
