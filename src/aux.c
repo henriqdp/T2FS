@@ -93,15 +93,11 @@ WORD read_word(sector_t* sector){
   result = sector->buffer[sector->current_index++];
   buffer = sector->buffer[sector->current_index++];
   result += buffer << 8;
-  if(sector->current_index >= SECTOR_SIZE)
-    free(sector);
   return result;
 }
 
 BYTE read_byte(sector_t* sector){
   char result = sector->buffer[sector->current_index++];
-  if(sector->current_index >= SECTOR_SIZE)
-    free(sector);
   return result;
 }
 
@@ -115,8 +111,6 @@ DWORD read_dword(sector_t* sector){
   result += buffer << 16;
   buffer = sector->buffer[sector->current_index++];
   result += buffer << 24;
-  if(sector->current_index >= SECTOR_SIZE)
-    free(sector);
   return result;
 }
 
@@ -290,17 +284,17 @@ int read_next_entry(dir_t *directory, DIRENT2 *dentry, WORD *cluster){
 	 	}
 	 	dentry->fileSize = read_dword(sector);
 	 	short int firstCluster = read_word(sector);
-	 	if(!DEBUG_ON){
+	 	if(DEBUG_ON){
 	 		switch(dentry->fileType){
 	 			case 1:
-	 				printf("Arquivo encontrado: \n");
+	 				printf("\n\nArquivo encontrado: \n");
 	 				break;
 	 			case 2:
-	 				printf("Subdiretorio encontrado:\n");
+	 				printf("\n\nSubdiretorio encontrado:\n");
 	 				break;
 	 		}
 	 		printf("\tNome: %s, tamanho: %lu\n", dentry->name, dentry->fileSize);
-	 		printf("\tFirst cluster: %hu\n\n", firstCluster);
+	 		printf("\tFirst cluster: %hu\n", firstCluster);
 	 		printf("\tIndice no subdiretorio: %d\n", directory->current_entry - 1);
 	 		
 	 	}
@@ -332,6 +326,12 @@ void mirror_paths(int way){
 void rewind_dir(dir_t *dir){
 	dir->current_cluster = dir->first_cluster;
 	dir->current_entry   = 0;
+	if(dir->first_cluster != _superbloco->RootSectorStart && FAT->data[dir->current_cluster-2] == FINAL_CLUSTER){
+		dir->is_final_cluster = true;
+	}
+	else{
+		dir->is_final_cluster = false;
+	}
 }
 
 
@@ -498,8 +498,8 @@ int get_first_invalid_entry(){
 	sector_t *sector;
 	short i;
 	short type;
+	Bool found = false;
 	if(working_directory->first_cluster == _superbloco->RootSectorStart){
-		Bool found = false;
 		int entries_in_root = (_superbloco->DataSectorStart - _superbloco->RootSectorStart) * (SECTOR_SIZE/32);
 		while(!found && working_directory->current_entry < entries_in_root){
 			sector = initialize_sector(_superbloco->RootSectorStart + (working_directory->current_entry / (SECTOR_SIZE/32)));
@@ -529,8 +529,41 @@ int get_first_invalid_entry(){
 		}
 	}
 	else{
-		/*IMPLEMENTAR P/ DIRETORIO NAO RAIZ */
-		return 0;
+		rewind_dir(working_directory);
+		int clusters_first_sector;
+		int sector_within_cluster;
+		while(!found && !(working_directory->current_entry / ((SECTOR_SIZE/32)*_superbloco->SectorPerCluster) >= 1 
+			&& working_directory->is_final_cluster == true)){
+			clusters_first_sector = _superbloco->DataSectorStart + (working_directory->current_cluster-2)*_superbloco->SectorPerCluster;
+			sector_within_cluster = (working_directory->current_entry % (_superbloco->SectorPerCluster * (SECTOR_SIZE/32))) / (SECTOR_SIZE/32);
+			
+			sector = initialize_sector(clusters_first_sector + sector_within_cluster);
+
+			for(i = 0; i < working_directory->current_entry % (SECTOR_SIZE/32); i++){
+						read_dword(sector);
+						read_dword(sector);
+						read_dword(sector);
+						read_dword(sector);
+		
+						read_dword(sector);
+						read_dword(sector);
+						read_dword(sector);
+						read_dword(sector);
+			}
+			type = read_byte(sector);
+			if(type == 0)
+				found = true;
+			else
+				working_directory->current_entry++;
+
+		}
+		if(found)
+			return 0;
+		else
+			/*
+				TODO: EXPANDIR PARA ADICIONAR CLUSTER AO DIRETORIO
+			*/
+			return -1;
 	}
 }
 
@@ -555,7 +588,10 @@ int get_free_fat_index(){
 	int index = 0;
 	Bool found = false;
 	while(!found && index < (FAT->size_in_sectors)*(SECTOR_SIZE/2)){
+		if(!DEBUG_ON)
+			printf("Analisando endereco %d da fat. Valor: %d\n", index, FAT->data[index]);
 		if(FAT->data[index] == 0){
+			printf("FOUND IT!\n");
 			found = true;
 		}
 		else
@@ -570,15 +606,18 @@ int update_entry(record_t new_record){
 		sector = initialize_sector(_superbloco->RootSectorStart + (working_directory->current_entry / (SECTOR_SIZE/32)));
 	}
 	else{
-		return 0;
+		int cluster_base_sector = _superbloco->DataSectorStart + (working_directory->current_cluster-2)*_superbloco->SectorPerCluster;
+		int real_sector = cluster_base_sector + (working_directory->current_entry / (SECTOR_SIZE/32));
+		printf("Entrada a ser gravada no setor %d\n", real_sector);
+		sector = initialize_sector(real_sector);
 	}
 
 	int result = 0;
 	result = seek_sector(sector, working_directory->current_entry % (SECTOR_SIZE/32));
-
+	printf("como assim!!\n");
 	if(result < 0)
 		return -1;
-
+	printf("como assim!!hein \n");
 	write_byte(sector, new_record.TypeVal);
 	int i;
 	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
@@ -608,6 +647,8 @@ int mkdir_relative(char *folder_name){
 	if(fat_index < 0)
 		return -1;
 
+	printf("A entrada sera gravada na posicao %d do cluster.\n", working_directory->current_entry);
+
 	
 	record_t new_entry; 
 	new_entry.TypeVal = 2;
@@ -615,49 +656,50 @@ int mkdir_relative(char *folder_name){
 	strcpy(&(new_entry.name[0]), folder_name);
 	new_entry.firstCluster = fat_index;
 
-	if(DEBUG_ON){
-		printf("Entrada da FAT livre para a gravacao do novo diretorio: %d\n", fat_index);
+	if(!DEBUG_ON){
+		printf("Entrada da FAT livre para a gravacao do novo diretorio: %d\n", new_entry.firstCluster);
 		printf("Indice da entrada livre dentro do diretorio: %d\n", working_directory->current_entry);
 		printf("Nome do novo diretorio: %s\n", new_entry.name);
+		printf("A ser gravado na entrada %d do setor %d\n", working_directory->current_entry, working_directory->current_cluster);
 	}
 
 	int result = update_entry(new_entry);
 	if(result < 0)
 		return -1;
 
-	sector_t *sector = initialize_sector(-1);
-	char dir_name[MAX_FILE_NAME_SIZE];
-	int i;
-	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
-		dir_name[i] = '\0';
-	}
+	// sector_t *sector = initialize_sector(-1);
+	// char dir_name[MAX_FILE_NAME_SIZE];
+	// int i;
+	// for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
+	// 	dir_name[i] = '\0';
+	// }
 	
 
-	dir_name[0] = '.';
-	write_byte(sector, 2);
-	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
-		write_byte(sector, dir_name[i]);
-	}
-	write_dword(sector, 0);
-	write_word(sector, fat_index);
+	// dir_name[0] = '.';
+	// write_byte(sector, 2);
+	// for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
+	// 	write_byte(sector, dir_name[i]);
+	// }
+	// write_dword(sector, 0);
+	// write_word(sector, fat_index);
 
-	dir_name[1] = '.';
-	write_byte(sector, 2);
+	// dir_name[1] = '.';
+	// write_byte(sector, 2);
 	
-	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
-		write_byte(sector, dir_name[i]);
-	}
-	write_dword(sector, 0);
-	if(working_directory->first_cluster == _superbloco->RootSectorStart)
-		write_word(sector, 0);
-	else
-		write_word(sector, working_directory->first_cluster);
+	// for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
+	// 	write_byte(sector, dir_name[i]);
+	// }
+	// write_dword(sector, 0);
+	// if(working_directory->first_cluster == _superbloco->RootSectorStart)
+	// 	write_word(sector, 0);
+	// else
+	// 	write_word(sector, working_directory->first_cluster);
 
-	FAT->data[fat_index - 2] = FINAL_CLUSTER;
-	update_FAT();
+	// FAT->data[fat_index - 2] = FINAL_CLUSTER;
+	// update_FAT();
 
-	update_index(sector, fat_index * _superbloco->SectorPerCluster);
-	update_sector(sector);
+	// update_index(sector, fat_index * _superbloco->SectorPerCluster);
+	// update_sector(sector);
 
 	return 0;
 }
