@@ -33,6 +33,7 @@ int change_dir(char *path, Bool subsequent);
 Bool split_path(char *path);
 
 Bool is_valid(char *name);
+Bool entry_exists(char *name);
 
 int get_handler(int type);
 int get_first_invalid_entry();

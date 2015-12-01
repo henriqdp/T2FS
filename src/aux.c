@@ -6,14 +6,14 @@
 #include <string.h>
 
 int write_byte(sector_t *sector, BYTE byte){
-	if(sector->current_index >= SECTOR_SIZE)
+	if(sector->current_index > SECTOR_SIZE - 1)
 		return -1;
 	sector->buffer[sector->current_index++] = byte;
 	return 0;
 }
 
 int write_word(sector_t *sector, WORD word){
-	if(sector->current_index >= SECTOR_SIZE)
+	if(sector->current_index > SECTOR_SIZE - 2)
 		return -1;
 	char aux = word % 256;
 	sector->buffer[sector->current_index++] = aux;
@@ -23,7 +23,7 @@ int write_word(sector_t *sector, WORD word){
 }
 
 int write_dword(sector_t *sector, DWORD dword){
-	if(sector->current_index >= SECTOR_SIZE)
+	if(sector->current_index > SECTOR_SIZE - 4)
 		return -1;
 	char aux = dword % 256;
 	sector->buffer[sector->current_index++] = aux;
@@ -446,6 +446,22 @@ Bool is_valid(char *name){
 
 }
 
+Bool entry_exists(char *name){
+	rewind_dir(working_directory);
+	
+	Bool exists = false;
+
+	WORD cluster_number;
+	DIRENT2 *entry = (DIRENT2 *) malloc(sizeof(DIRENT2));
+	while(!exists && read_next_entry(working_directory, entry, &cluster_number) != -1)
+	{
+		if(strcmp(name, entry->name) == 0)
+			exists = true;
+	}
+	return exists;
+
+}
+
 int get_handler(int type){
 	Bool found = false;
 	int result = -1;
@@ -478,7 +494,7 @@ int get_handler(int type){
 
 /*
 
-		CONSERTAR ESSA FUNCAO (funcionando apenas pro diretorio raiz)
+		CONSERTAR ESSA FUNCAO (funcionando apenas pro diretorio raiz e pra subdir sem expansao)
 
 */
 int get_first_invalid_entry(){
@@ -625,6 +641,9 @@ int mkdir_relative(char *folder_name){
 		return -1;
 	}
 
+	if(entry_exists(folder_name))
+		return -1;
+
 
 	int entry_index = get_first_invalid_entry();
 	if(entry_index < 0)
@@ -640,7 +659,7 @@ int mkdir_relative(char *folder_name){
 	strcpy(&(new_entry.name[0]), folder_name);
 	new_entry.firstCluster = fat_index;
 
-	if(DEBUG_ON){
+	if(!DEBUG_ON){
 		printf("Entrada da FAT livre para a gravacao do novo diretorio: %d\n", new_entry.firstCluster);
 		printf("Indice da entrada livre dentro do diretorio: %d\n", working_directory->current_entry);
 		printf("Nome do novo diretorio: %s\n", new_entry.name);
@@ -651,39 +670,39 @@ int mkdir_relative(char *folder_name){
 	if(result < 0)
 		return -1;
 
-	// sector_t *sector = initialize_sector(-1);
-	// char dir_name[MAX_FILE_NAME_SIZE];
-	// int i;
-	// for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
-	// 	dir_name[i] = '\0';
-	// }
+	FAT->data[new_entry.firstCluster-2] = FINAL_CLUSTER;
+	update_FAT();
+
+	sector_t *sector = initialize_sector(-1);
+	char dir_name[MAX_FILE_NAME_SIZE];
+	int i;
+	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
+		dir_name[i] = '\0';
+	}
 	
 
-	// dir_name[0] = '.';
-	// write_byte(sector, 2);
-	// for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
-	// 	write_byte(sector, dir_name[i]);
-	// }
-	// write_dword(sector, 0);
-	// write_word(sector, fat_index);
+	dir_name[0] = '.';
+	write_byte(sector, 2);
+	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
+		write_byte(sector, dir_name[i]);
+	}
+	write_dword(sector, 0);
+	write_word(sector, fat_index);
 
-	// dir_name[1] = '.';
-	// write_byte(sector, 2);
+	dir_name[1] = '.';
+	write_byte(sector, 2);
 	
-	// for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
-	// 	write_byte(sector, dir_name[i]);
-	// }
-	// write_dword(sector, 0);
-	// if(working_directory->first_cluster == _superbloco->RootSectorStart)
-	// 	write_word(sector, 0);
-	// else
-	// 	write_word(sector, working_directory->first_cluster);
+	for(i = 0; i < MAX_FILE_NAME_SIZE; i++){
+		write_byte(sector, dir_name[i]);
+	}
+	write_dword(sector, 0);
+	if(working_directory->first_cluster == _superbloco->RootSectorStart)
+		write_word(sector, 0);
+	else
+		write_word(sector, working_directory->first_cluster);
 
-	// FAT->data[fat_index - 2] = FINAL_CLUSTER;
-	// update_FAT();
-
-	// update_index(sector, fat_index * _superbloco->SectorPerCluster);
-	// update_sector(sector);
+	update_index(sector, _superbloco->DataSectorStart + (new_entry.firstCluster-2)*_superbloco->SectorPerCluster);
+	update_sector(sector);
 
 	return 0;
 }

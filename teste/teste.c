@@ -68,7 +68,6 @@ int main(int argc, char **argv){
          int result = mkdir2(argument);
          if(result < 0){
             printf("Erro na criacao do novo diretorio.\n");
-            printf("Pode ser que o caminho especificado seja invalido ou que o nome do novo diretorio contenha caracteres nao alfanumericos.\n");
          }
          continue;
       }
