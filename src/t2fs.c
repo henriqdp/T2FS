@@ -24,8 +24,40 @@ FILE2 create2 (char *filename){
   if(!superblock_read){
     read_superblock();
   }
-  FILE2 file = 0;
-  return file;
+  if(!superblock_read){
+    read_superblock();
+  }
+  Bool split = split_path(filename);
+  int result;
+  if(split){
+    if(DEBUG_ON){
+      printf("Diretorio no qual sera criado o arquivo: ");
+      puts(filename);
+      printf("Nome do arquivo: ");
+      puts(filename + strlen(filename) + 1);
+    }
+    result = change_dir(filename, false);
+    if(result < 0)
+      return -1;
+    else
+      return 0;
+  }
+  else{
+    if(DEBUG_ON){
+      printf("Nome do arquivo a ser criado: ");
+        puts(filename);
+      }
+
+    if(filename[0] == '/'){
+      set_working_to_root();
+      return create_relative(pathname + 1);
+    }
+    else{
+      mirror_paths(CURR_TO_WORK);
+      return create_relative(pathname);
+    }
+    return 0;
+  }
 }
 
 int delete2 (char *filename){
@@ -39,8 +71,37 @@ FILE2 open2 (char *filename){
   if(!superblock_read){
     read_superblock();
   }
-  FILE2 retorno = 0;
-  return retorno;
+
+  Bool split = split_path(filename);
+  int result;
+  if(split){
+    if(DEBUG_ON){
+      printf("Diretorio no qual o arquivo se encontra: ");
+      puts(filename);
+      printf("Nome do arquivo: ");
+      puts(filename + strlen(filename) + 1);
+    }
+    result = change_dir(filename, false);
+    if(result < 0)
+      return -1;
+    else
+      return open_relative(filename + strlen(filename) + 1);
+  }
+  else{
+    if(DEBUG_ON){
+      printf("Nome do arquivo a ser aberto: ");
+        puts(filename);
+      }
+
+    if(filename[0] == '/'){
+      set_working_to_root();
+      return open_relative(filename + 1);
+    }
+    else{
+      mirror_paths(CURR_TO_WORK);
+      return open_relative(filename);
+    }
+  }
 }
 
 int close2 (FILE2 handle){
@@ -60,7 +121,12 @@ int read2 (FILE2 handle, char *buffer, int size){
   if(!superblock_read){
     read_superblock();
   }
-  return 0;
+  if(!files[handle].active || buffer == NULL)
+    return -1;
+  else{
+    return read_bytes(handle, size, buffer);
+  }
+  
 }
 
 int write2 (FILE2 handle, char *buffer, int size){
@@ -79,9 +145,11 @@ int seek2 (FILE2 handle, unsigned int offset){
       printf("Handle de arquivo invalido.\n");
   }
 
-  if(offset != -1)
-    files[handle].current_byte = offset;
-  else{
+  if(offset != -1){
+      printf("IH RAPAZ\n");
+      files[handle].current_byte = offset;
+    }
+    else{
     files[handle].current_byte = files[handle].size;
   }
 
@@ -96,7 +164,7 @@ int mkdir2 (char *pathname){
   Bool split = split_path(pathname);
   int result;
   if(split){
-    if(!DEBUG_ON){
+    if(DEBUG_ON){
       printf("Diretorio no qual sera criado o arquivo: ");
       puts(pathname);
       printf("Nome do diretorio: ");

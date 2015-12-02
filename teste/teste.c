@@ -33,6 +33,24 @@ int main(int argc, char **argv){
    		continue;
    	}
 
+      if(strcmp(command, "show") == 0){
+         scanf("%s", argument);
+         FILE2 arquivo = open2(argument);
+         if(arquivo < 0){
+            printf("ERRO: caminho do diretorio ou nome do arquivo invalido.\n");
+         }
+         else{
+            char *buffer = (char *) calloc(1024, sizeof(char));
+            memset(buffer, '\0', 1024);
+            read2(arquivo, buffer, 200);
+            printf("====== CONTEUDO DO ARQUIVO ========== \n\n");
+            printf("%s\n", buffer);
+            printf("=====================================\n");
+            free(buffer);
+         }
+         continue;
+      }
+
    	if(strcmp(command, "ls") == 0){
    		DIRENT2 *entry = (DIRENT2 *) malloc(sizeof(DIRENT2));
    		while(readdir2(CURR_DIR, entry) != -1){

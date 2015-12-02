@@ -183,11 +183,13 @@ int read_superblock(){
   FAT->size_in_sectors = _superbloco->sFATSectorStart - _superbloco->pFATSectorStart;
   if(DEBUG_ON)
     printf("Tamanho da FAT em setores: %d\n", FAT->size_in_sectors);
-  FAT->data = (WORD *) calloc(SECTOR_SIZE/2, sizeof(WORD));
+  
+  FAT->data = (WORD *) calloc(SECTOR_SIZE/2 * FAT->size_in_sectors, sizeof(WORD));
   for(i = 0; i < FAT->size_in_sectors; i++){
      read_sector(_superbloco->pFATSectorStart + i, (char *)FAT->data + i*(SECTOR_SIZE/2));   
    }
 
+  
    //especificacao do diretorio raiz na memoria
   current_directory = (dir_t *) malloc(sizeof(dir_t));
   current_directory->fullpath = (char *) calloc(1024, sizeof(char));
@@ -705,4 +707,76 @@ int mkdir_relative(char *folder_name){
 	update_sector(sector);
 
 	return 0;
+}
+
+FILE2 open_relative(char *filename){
+	FILE2 handler = get_handler(FILE_HANDLER);
+	if(handler < 0){
+		return -1;
+	}
+	Bool found = false;
+	rewind_dir(working_directory);
+	DIRENT2 file;
+	WORD clusterNo;
+	while(!found && read_next_entry(working_directory, &file, &clusterNo) != -1){
+		if(file.fileType == 1 && strcmp(file.name, filename) == 0){
+			if(files[handler].filename == NULL){
+				if(DEBUG_ON)
+					printf("Alocando memoria para o nome do arquivo.\n");
+				files[handler].filename = (char *) calloc(MAX_FILE_NAME_SIZE + 1, sizeof(char));
+			}
+			memset(files[handler].filename, '\0', MAX_FILE_NAME_SIZE + 1);
+			memcpy(files[handler].filename, filename, MAX_FILE_NAME_SIZE);
+			files[handler].size = file.fileSize;
+			files[handler].first_cluster = clusterNo;
+			files[handler].folder_first_cluster = working_directory->first_cluster;
+			files[handler].current_byte = 0;
+			files[handler].current_cluster = clusterNo;
+			found = true;
+		}
+	}
+	if(found)
+	{
+		if(DEBUG_ON){
+			printf("Nome do arquivo: ");
+			puts(files[handler].filename);
+			printf("Primeiro cluster do arquivo: %d\n", files[handler].first_cluster);
+			printf("Primeiro cluster do diretorio que o contem: %d\n", files[handler].folder_first_cluster);
+			printf("Tamanho do arquivo em bytes: %lu\n",files[handler].size);
+			printf("Handler do arquivo: %d\n", handler);
+		}
+		return handler;
+	}
+	else
+		return -1;
+}
+
+int read_bytes(FILE2 handle, int size, char *buffer){
+	int bytes_lidos = 0;
+	if(size == 0)
+		return 0;
+	sector_t *sector;
+	int i;
+	while(bytes_lidos < size && files[handle].current_byte < files[handle].size){
+		sector = initialize_sector(_superbloco->DataSectorStart + ((files[handle].current_cluster-2) * _superbloco->SectorPerCluster)
+									+ files[handle].current_byte / SECTOR_SIZE);
+
+		for(i = 0; i < files[handle].current_byte % SECTOR_SIZE; i++)
+			read_byte(sector);
+
+		do{
+			*(buffer + bytes_lidos) = read_byte(sector);
+			bytes_lidos++;
+			files[handle].current_byte++;
+		}while(bytes_lidos % SECTOR_SIZE != 0 && bytes_lidos < size && files[handle].current_byte < files[handle].size);
+		if(files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster) == 0){
+			files[handle].current_cluster = FAT->data[files[handle].current_cluster-2];
+		}
+
+	}
+	return bytes_lidos;
+}
+
+FILE2 create_relative(char *filename){
+	
 }

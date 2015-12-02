@@ -41,4 +41,9 @@ int mkdir_relative(char *folder_name);
 
 int get_free_fat_index();
 int update_FAT();
+
+FILE2 open_relative(char *filename);
+int read_bytes(FILE2 handle, int size, char *buffer);
+FILE2 create_relative(char *filename);
+
 #endif

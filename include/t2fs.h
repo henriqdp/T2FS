@@ -83,7 +83,7 @@ typedef struct directory_descriptor{
 
 typedef struct file_descriptor{
 	char *filename;
-	int size;
+	unsigned long size;
 	unsigned short first_cluster;
 	unsigned short current_cluster;
 	unsigned int current_byte;
