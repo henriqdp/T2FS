@@ -69,7 +69,7 @@ int main(int argc, char **argv){
    		while(readdir2(CURR_DIR, entry) != -1){
    			switch(entry->fileType){
    				case 1:
-   					printf("ARQ %s %lub\n", entry->name, entry->fileSize);
+   					printf("ARQ %s %ub\n", entry->name, entry->fileSize);
    					break;
    				case 2:
    					printf("DIR %s \n", entry->name);
@@ -131,6 +131,23 @@ int main(int argc, char **argv){
          if(result < 0){
             printf("Erro na criacao do novo diretorio.\n");
          }
+         continue;
+      }
+
+      if(strcmp(command, "rmdir") == 0){
+         scanf("%s", argument);
+         int result = rmdir2(argument);
+         if(result < 0){
+            printf("Erro na remocao do diretorio especificado.\n");
+         }
+         continue;
+      }
+
+      if(strcmp(command, "rm") == 0){
+         scanf("%s", argument);
+         int result = delete2(argument);
+         if(result < 0)
+            printf("Erro na remocao do arquivo %s\n", argument);
          continue;
       }
       

@@ -65,7 +65,41 @@ int delete2 (char *filename){
   if(!superblock_read){
     read_superblock();
   }
-  return 0;
+    Bool split = split_path(filename);
+  char *filename_aux = (char *) calloc(1024, sizeof(char));
+  memset(filename_aux, '\0', 1014);
+  strcpy(filename_aux, filename);
+  int result;
+  if(split){
+    if(DEBUG_ON){
+      printf("Diretorio no qual sera criado o arquivo: ");
+      puts(filename);
+      printf("Nome do diretorio: ");
+      puts(filename + strlen(filename) + 1);
+    }
+    result = change_dir(filename_aux, false);
+    free(filename_aux);
+    if(result < 0)
+      return -1;
+    else
+      return remove_relative(filename + strlen(filename) + 1, REMOVE_FILE);
+  }
+  else{
+    free(filename_aux);
+    if(DEBUG_ON){
+      printf("Nome do diretorio a ser criado: ");
+        puts(filename);
+      }
+
+    if(filename[0] == '/'){
+      set_working_to_root();
+      return remove_relative(filename + 1, REMOVE_FILE);
+    }
+    else{
+      mirror_paths(CURR_TO_WORK);
+      return remove_relative(filename, REMOVE_FILE);
+    }
+  }
 }
 
 FILE2 open2 (char *filename){
@@ -216,7 +250,58 @@ int rmdir2 (char *pathname){
   if(!superblock_read){
     read_superblock();
   }
-  return 0;
+
+ 
+  char *pathname_aux = (char *) calloc(1024, sizeof(char));
+  memset(pathname_aux, '\0', 1014);
+  strcpy(pathname_aux, pathname);
+
+  int result = change_dir(pathname, false);
+  int number_of_entries = 0;
+  DIRENT2 entry;
+  WORD clusterNo;
+  if(result < 0)
+    return -1;
+  else{
+    while(read_next_entry(working_directory, &entry, &clusterNo) != -1){
+      number_of_entries++;
+    }
+    printf("Numero de entradas no diretorio: %d\n", number_of_entries);
+    if(number_of_entries > 2){
+      return -1;
+    }
+  }
+   Bool split = split_path(pathname);
+  if(split){
+    if(DEBUG_ON){
+      printf("Diretorio no qual sera criado o arquivo: ");
+      puts(pathname);
+      printf("Nome do diretorio: ");
+      puts(pathname + strlen(pathname) + 1);
+    }
+    result = change_dir(pathname_aux, false);
+    free(pathname_aux);
+    if(result < 0)
+      return -1;
+    else
+      return remove_relative(pathname + strlen(pathname) + 1, REMOVE_DIR);
+  }
+  else{
+    free(pathname_aux);
+    if(DEBUG_ON){
+      printf("Nome do diretorio a ser criado: ");
+        puts(pathname);
+      }
+
+    if(pathname[0] == '/'){
+      set_working_to_root();
+      return remove_relative(pathname + 1, REMOVE_DIR);
+    }
+    else{
+      mirror_paths(CURR_TO_WORK);
+      return remove_relative(pathname, REMOVE_DIR);
+    }
+  }
 }
 
 DIR2 opendir2 (char *pathname){

@@ -9,6 +9,8 @@
 
 #define CREATE_FILE 10
 #define CREATE_DIR  11
+#define REMOVE_FILE 12
+#define REMOVE_DIR  13
 
 #include "apidisk.h"
 #include "t2fs.h"
@@ -48,5 +50,8 @@ int update_FAT();
 FILE2 open_relative(char *filename);
 int read_bytes(FILE2 handle, int size, char *buffer);
 int write_bytes(FILE2 handle, int size, char *buffer);
+
+int is_empty_folder(char *pathname);
+int remove_relative(char *pathname, int type);
 
 #endif

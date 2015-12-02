@@ -57,7 +57,7 @@ struct t2fs_record {
 typedef struct {
     char name[MAX_FILE_NAME_SIZE+1];	/* Nome do arquivo, conforme aparece na entrada de diretório */
     int fileType;                       /* Indica se é arquivo (0) ou diretório (1) */
-    unsigned long fileSize;             /* número de bytes do arquivo */
+    unsigned int fileSize;             /* número de bytes do arquivo */
 } DIRENT2;
 
 typedef struct t2fs_superbloco superbloco_t;
@@ -83,7 +83,7 @@ typedef struct directory_descriptor{
 
 typedef struct file_descriptor{
 	char *filename;
-	unsigned long size;
+	unsigned int size;
 	unsigned short first_cluster;
 	unsigned short current_cluster;
 	unsigned long current_byte;

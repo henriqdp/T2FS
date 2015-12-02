@@ -103,13 +103,14 @@ BYTE read_byte(sector_t* sector){
 
 
 DWORD read_dword(sector_t* sector){
-  DWORD result = 0, buffer = 0;
-  result = sector->buffer[sector->current_index++];
-  buffer = sector->buffer[sector->current_index++];
+  DWORD result = 0x00, buffer = 0;
+  result = (unsigned short) sector->buffer[sector->current_index++] % 65280;
+  buffer = (unsigned short) sector->buffer[sector->current_index++] % 65280;
   result += buffer << 8;
-  buffer = sector->buffer[sector->current_index++];
+  
+  buffer = (unsigned short) sector->buffer[sector->current_index++] % 65280;
   result += buffer << 16;
-  buffer = sector->buffer[sector->current_index++];
+  buffer = (unsigned short) sector->buffer[sector->current_index++] % 65280;
   result += buffer << 24;
   return result;
 }
@@ -213,7 +214,7 @@ int read_next_entry(dir_t *directory, DIRENT2 *dentry, WORD *cluster){
 	int current_entry_within_sector, real_sector;
 
 	if(DEBUG_ON)
-		printf("Primeiro cluster: %d\n", directory->first_cluster);
+		printf("Primeiro cluster do diretorio: %d\n", directory->first_cluster);
 	if(directory->first_cluster == 0){
 		real_sector = _superbloco->RootSectorStart + directory->current_entry / (SECTOR_SIZE/32);
 
@@ -281,7 +282,7 @@ int read_next_entry(dir_t *directory, DIRENT2 *dentry, WORD *cluster){
 	 				printf("\n\nSubdiretorio encontrado:\n");
 	 				break;
 	 		}
-	 		printf("\tNome: %s, tamanho: %lu\n", dentry->name, dentry->fileSize);
+	 		printf("\tNome: %s, tamanho: %u\n", dentry->name, dentry->fileSize);
 	 		printf("\tFirst cluster: %hu\n", firstCluster);
 	 		printf("\tIndice no subdiretorio: %d\n", directory->current_entry - 1);
 	 		
@@ -764,7 +765,7 @@ FILE2 open_relative(char *filename){
 			puts(files[handler].filename);
 			printf("Primeiro cluster do arquivo: %d\n", files[handler].first_cluster);
 			printf("Primeiro cluster do diretorio que o contem: %d\n", files[handler].folder_first_cluster);
-			printf("Tamanho do arquivo em bytes: %lu\n",files[handler].size);
+			printf("Tamanho do arquivo em bytes: %u\n",files[handler].size);
 			printf("Handler do arquivo: %d\n", handler);
 		}
 		return handler;
@@ -774,7 +775,7 @@ FILE2 open_relative(char *filename){
 }
 
 int read_bytes(FILE2 handle, int size, char *buffer){
-	printf("O programa lera no maximo %lu bytes.\n", files[handle].size);
+	printf("O programa lera no maximo %u bytes.\n", files[handle].size);
 	int bytes_lidos = 0;
 	if(size == 0)
 		return 0;
@@ -850,10 +851,7 @@ int write_bytes(FILE2 handle, int size, char *buffer){
 			}
 			update_sector(sector);
 	}
-	if(DEBUG_ON){
-		printf("Byte corrente: %lu\n", files[handle].current_byte);
-		printf("Tamanho do arquivo: %lu\n", files[handle].size);
-	}
+
 
 	if(files[handle].current_byte + 1 > files[handle].size){
 		working_directory->first_cluster   = files[handle].folder_first_cluster;
@@ -872,6 +870,10 @@ int write_bytes(FILE2 handle, int size, char *buffer){
 			}
 		}
 		if(working_directory->current_cluster == 0){
+			if(!DEBUG_ON){
+				printf("Byte corrente: %lu\n", files[handle].current_byte);
+				printf("Tamanho do arquivo: %u\n", files[handle].size);
+			}
 			sector = initialize_sector(_superbloco->RootSectorStart + (entry_index / (SECTOR_SIZE/32)));
 			seek_sector(sector, entry_index % (SECTOR_SIZE/32));
 			read_byte(sector);
@@ -898,4 +900,63 @@ int write_bytes(FILE2 handle, int size, char *buffer){
 	}
 	return written_bytes;
 	
+}
+
+int is_empty_folder(char *pathname){
+	return 0;
+}
+
+int remove_relative(char *name, int type){
+	rewind_dir(working_directory);
+	WORD clusterNo;
+	DIRENT2 entry;
+	Bool found = false;
+	sector_t *sector;
+	if(type == REMOVE_FILE){
+		while(!found && read_next_entry(working_directory, &entry, &clusterNo) != -1){
+			if(strcmp(name, entry.name) == 0 && entry.fileType == 1){
+				found = true;
+
+			}
+		}
+	}
+	else{
+			while(!found && read_next_entry(working_directory, &entry, &clusterNo) != -1){
+				if(strcmp(name, entry.name) == 0 && entry.fileType == 2){
+					found = true;
+
+				}
+			}
+	}
+	if(found){
+		if(!DEBUG_ON){
+			printf("Entrada encontrada!\n");
+			printf("Entrada no indice %d do diretorio.\n", working_directory->current_entry -1);
+			printf("Primeiro cluster: %d\n", clusterNo);
+		}
+		if(working_directory->first_cluster == 0){
+			sector = initialize_sector(_superbloco->RootSectorStart + (working_directory->current_entry - 1) / (SECTOR_SIZE/32));
+		}
+		else{
+			sector = initialize_sector(_superbloco->DataSectorStart + (working_directory->current_cluster-2)*_superbloco->SectorPerCluster
+				+ ((working_directory->current_entry-1) % ((SECTOR_SIZE/32)*_superbloco->SectorPerCluster))/(SECTOR_SIZE/32));
+		}
+		seek_sector(sector, (working_directory->current_entry - 1) % (SECTOR_SIZE/32));
+		write_byte(sector, 0);
+		update_sector(sector);
+		unsigned short fat_addr  = clusterNo;
+		unsigned short next_addr = FAT->data[fat_addr-2];
+		FAT->data[fat_addr-2] = 0;
+		while(next_addr != FINAL_CLUSTER){
+			fat_addr = next_addr;
+			next_addr = FAT->data[fat_addr-2];
+			FAT->data[fat_addr-2] = 0;
+		}
+		update_FAT();
+	}
+	else{
+		return -1;
+	}
+	return 0;
+
 }
