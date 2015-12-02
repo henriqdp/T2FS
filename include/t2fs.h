@@ -86,7 +86,7 @@ typedef struct file_descriptor{
 	unsigned long size;
 	unsigned short first_cluster;
 	unsigned short current_cluster;
-	unsigned int current_byte;
+	unsigned long current_byte;
 	unsigned short folder_first_cluster;
 	Bool active;
 	Bool is_final_cluster;

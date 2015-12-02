@@ -774,17 +774,20 @@ FILE2 open_relative(char *filename){
 }
 
 int read_bytes(FILE2 handle, int size, char *buffer){
+	printf("O programa lera no maximo %lu bytes.\n", files[handle].size);
 	int bytes_lidos = 0;
 	if(size == 0)
 		return 0;
 	sector_t *sector;
 	int i;
 	while(bytes_lidos < size && files[handle].current_byte < files[handle].size){
+
 		sector = initialize_sector(_superbloco->DataSectorStart + ((files[handle].current_cluster-2) * _superbloco->SectorPerCluster)
 							+ ((files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster)) / SECTOR_SIZE));
 
-		for(i = 0; i < files[handle].current_byte % SECTOR_SIZE; i++)
+		for(i = 0; i < files[handle].current_byte % SECTOR_SIZE; i++){
 			read_byte(sector);
+		}
 
 		do{
 			*(buffer + bytes_lidos) = read_byte(sector);
@@ -803,13 +806,16 @@ int read_bytes(FILE2 handle, int size, char *buffer){
 }
 
 int write_bytes(FILE2 handle, int size, char *buffer){
+
 	int written_bytes = 0;
 	if(size == 0)
 		return 0;
+	if(buffer == NULL)
+		return -1;
 	sector_t *sector;
 	int i;
 
-	if(files[handle].size <= files[handle].current_byte 
+	if(files[handle].size == files[handle].current_byte 
 		&& files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster) == 0
 		&& files[handle].size > 0)
 		{
@@ -829,14 +835,67 @@ int write_bytes(FILE2 handle, int size, char *buffer){
 				read_byte(sector);
 			do{
 				write_byte(sector, (BYTE) *(buffer + written_bytes++));
-				file[handle].current_byte++;
+				files[handle].current_byte++;
 			}while(files[handle].current_byte % SECTOR_SIZE != 0 && written_bytes < size);
 			
-			if(files[handle].current_byte % SECTOR_SIZE == 0){
-				if(files[handle].is_final_cluster == true){
-					files[handle].is_final_cluster = false;
+			if(files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster) == 0 
+				&& written_bytes < size){
+				if(files[handle].is_final_cluster){
+					int new_cluster = get_free_fat_index();
+					FAT->data[files[handle].current_cluster-2] = new_cluster;
+					FAT->data[new_cluster-2] = FINAL_CLUSTER;
+					files[handle].current_cluster = new_cluster;
+					update_FAT();
 				}
 			}
+			update_sector(sector);
+	}
+	if(DEBUG_ON){
+		printf("Byte corrente: %lu\n", files[handle].current_byte);
+		printf("Tamanho do arquivo: %lu\n", files[handle].size);
+	}
+
+	if(files[handle].current_byte + 1 > files[handle].size){
+		working_directory->first_cluster   = files[handle].folder_first_cluster;
+		rewind_dir(working_directory);
+		files[handle].size = files[handle].current_byte;
+		DIRENT2 dentry;
+		WORD clusterNo;
+		Bool found = false;
+		int entry_index = 0;
+		sector_t *sector;
+		while(!found){
+			read_next_entry(working_directory, &dentry, &clusterNo);
+			if(strcmp(dentry.name, files[handle].filename) == 0){
+				entry_index = working_directory->current_entry - 1;
+				found = true;
+			}
+		}
+		if(working_directory->current_cluster == 0){
+			sector = initialize_sector(_superbloco->RootSectorStart + (entry_index / (SECTOR_SIZE/32)));
+			seek_sector(sector, entry_index % (SECTOR_SIZE/32));
+			read_byte(sector);
+			for(i = 0; i < MAX_FILE_NAME_SIZE; i++)
+				read_byte(sector);
+			write_dword(sector, files[handle].size);
+			update_sector(sector);
+
+		} 	
+		else{
+			sector = initialize_sector(_superbloco->DataSectorStart 
+										+ (working_directory->current_cluster-2)*(_superbloco->SectorPerCluster)
+										+ (entry_index % (SECTOR_SIZE*_superbloco->SectorPerCluster/32))/(SECTOR_SIZE/32));
+			seek_sector(sector, entry_index % (SECTOR_SIZE/32));
+			read_byte(sector);
+			for(i = 0; i < MAX_FILE_NAME_SIZE; i++)
+				read_byte(sector);
+			write_dword(sector, files[handle].size);
+			update_sector(sector);
+		}
+	}
+	else{
+
 	}
 	return written_bytes;
+	
 }

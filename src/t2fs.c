@@ -161,7 +161,6 @@ int seek2 (FILE2 handle, unsigned int offset){
   }
 
   if(offset != -1){
-      printf("IH RAPAZ\n");
       files[handle].current_byte = offset;
     }
     else{

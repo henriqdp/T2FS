@@ -13,8 +13,9 @@ int main(int argc, char **argv){
 
    char lixo;
    
-   char *command  =  (char *) calloc(1024, sizeof(char));
-   char *argument =  (char *) calloc(1024, sizeof(char));
+   char *command   =  (char *) calloc(1024, sizeof(char));
+   char *argument  =  (char *) calloc(1024, sizeof(char));
+   char *argument2 =  (char *) calloc(1024, sizeof(char));
    int exit_required = 0;
    while(!exit_required){
    	getcwd2(pathname, 1024);
@@ -51,10 +52,13 @@ int main(int argc, char **argv){
          else{
             char *buffer = (char *) calloc(1024, sizeof(char));
             memset(buffer, '\0', 1024);
-            read2(arquivo, buffer, 200);
+            int lidos = read2(arquivo, buffer, 200);
             printf("====== CONTEUDO DO ARQUIVO ========== \n\n");
-            printf("%s\n", buffer);
-            printf("=====================================\n");
+            int i;
+            for(i = 0; i < lidos; i++)
+               printf("%c", *(buffer + i));
+            printf("\n\n=====================================\n");
+            printf("A funcao leu no total %d bytes\n", lidos);
             free(buffer);
          }
          continue;
@@ -89,6 +93,37 @@ int main(int argc, char **argv){
   		puts(autores); 
    		continue;
    	}
+
+      if(strcmp(command, "write") == 0){
+         scanf("%s", argument);
+         FILE2 file = open2(argument);
+         if(file >= 0){
+            scanf("%s", argument2);
+            seek2(file, 0);
+            int result = write2(file, argument2, strlen(argument2));
+            if(result < 0){
+               printf("Erro na escrita.\n");
+            }
+         }
+         continue;
+
+      }
+
+      if(strcmp(command, "append") == 0){
+         printf("\nEITA!!\n");
+         scanf("%s", argument);
+         FILE2 file = open2(argument);
+         if(file >= 0){
+            scanf("%s", argument2);
+            seek2(file, -1);
+            int result = write2(file, argument2, strlen(argument2));
+            if(result < 0){
+               printf("Erro na escrita.\n");
+            }
+         }
+         continue;
+
+      }
 
       if(strcmp(command, "mkdir") == 0){
          scanf("%s", argument);
