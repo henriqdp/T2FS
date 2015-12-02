@@ -126,6 +126,9 @@ int read2 (FILE2 handle, char *buffer, int size){
   if(!superblock_read){
     read_superblock();
   }
+  if(buffer == NULL)
+    return -1;
+
   if(!files[handle].active || buffer == NULL)
     return -1;
   else{
@@ -138,7 +141,14 @@ int write2 (FILE2 handle, char *buffer, int size){
   if(!superblock_read){
     read_superblock();
   }
-  return 0;
+  if(buffer == NULL)
+   return -1;
+  
+  if(!files[handle].active || buffer == NULL)
+    return -1;
+  else{
+    return write_bytes(handle, size, buffer);
+  }
 }
 
 int seek2 (FILE2 handle, unsigned int offset){

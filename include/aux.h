@@ -47,5 +47,6 @@ int update_FAT();
 
 FILE2 open_relative(char *filename);
 int read_bytes(FILE2 handle, int size, char *buffer);
+int write_bytes(FILE2 handle, int size, char *buffer);
 
 #endif

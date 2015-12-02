@@ -11,6 +11,7 @@ int main(int argc, char **argv){
    
    char *pathname = (char *) calloc(1024, sizeof(char));
 
+   char lixo;
    
    char *command  =  (char *) calloc(1024, sizeof(char));
    char *argument =  (char *) calloc(1024, sizeof(char));
@@ -99,7 +100,9 @@ int main(int argc, char **argv){
       }
       
    	printf("Comando desconhecido! Por favor, va ler o manual.\n");
-      fflush(stdin);
+      while(lixo != '\n')
+         scanf("%c", &lixo);
+      lixo = '\0';
    }
 
   return 0;

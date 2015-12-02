@@ -83,7 +83,7 @@ sector_t *initialize_sector(int sector_number){
 	  else{
 	    if(DEBUG_ON)
 	      printf("Erro na leitura do setor especificado! (Setor #%d)\n", sector_number);
-	    return NULL;
+	  	exit(EXIT_FAILURE);
 	  }
 	}
 }
@@ -597,7 +597,6 @@ int get_free_fat_index(){
 		if(DEBUG_ON)
 			printf("Analisando endereco %d da fat. Valor: %d\n", index, FAT->data[index]);
 		if(FAT->data[index] == 0){
-			if(DEBUG_ON) printf("FOUND IT!\n");
 			found = true;
 		}
 		else
@@ -782,7 +781,7 @@ int read_bytes(FILE2 handle, int size, char *buffer){
 	int i;
 	while(bytes_lidos < size && files[handle].current_byte < files[handle].size){
 		sector = initialize_sector(_superbloco->DataSectorStart + ((files[handle].current_cluster-2) * _superbloco->SectorPerCluster)
-									+ files[handle].current_byte / SECTOR_SIZE);
+							+ ((files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster)) / SECTOR_SIZE));
 
 		for(i = 0; i < files[handle].current_byte % SECTOR_SIZE; i++)
 			read_byte(sector);
@@ -791,11 +790,53 @@ int read_bytes(FILE2 handle, int size, char *buffer){
 			*(buffer + bytes_lidos) = read_byte(sector);
 			bytes_lidos++;
 			files[handle].current_byte++;
-		}while(bytes_lidos % SECTOR_SIZE != 0 && bytes_lidos < size && files[handle].current_byte < files[handle].size);
-		if(files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster) == 0){
+		}while(files[handle].current_byte % SECTOR_SIZE != 0 && bytes_lidos < size && files[handle].current_byte < files[handle].size);
+		
+		if(files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster) == 0 && files[handle].is_final_cluster == false){
 			files[handle].current_cluster = FAT->data[files[handle].current_cluster-2];
+			if(FAT->data[files[handle].current_cluster-2] == FINAL_CLUSTER)
+				files[handle].is_final_cluster = true;
 		}
 
 	}
 	return bytes_lidos;
+}
+
+int write_bytes(FILE2 handle, int size, char *buffer){
+	int written_bytes = 0;
+	if(size == 0)
+		return 0;
+	sector_t *sector;
+	int i;
+
+	if(files[handle].size <= files[handle].current_byte 
+		&& files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster) == 0
+		&& files[handle].size > 0)
+		{
+			if(files[handle].is_final_cluster){
+				int new_cluster = get_free_fat_index();
+				FAT->data[files[handle].current_cluster-2] = new_cluster;
+				FAT->data[new_cluster-2] = FINAL_CLUSTER;
+				files[handle].current_cluster = new_cluster;
+				update_FAT();
+			}
+	}
+
+	while(written_bytes < size){
+			sector = initialize_sector(_superbloco->DataSectorStart + ((files[handle].current_cluster-2) * _superbloco->SectorPerCluster)
+							+ ((files[handle].current_byte % (SECTOR_SIZE * _superbloco->SectorPerCluster)) / SECTOR_SIZE));
+			for(i = 0; i < files[handle].current_byte % SECTOR_SIZE; i++)
+				read_byte(sector);
+			do{
+				write_byte(sector, (BYTE) *(buffer + written_bytes++));
+				file[handle].current_byte++;
+			}while(files[handle].current_byte % SECTOR_SIZE != 0 && written_bytes < size);
+			
+			if(files[handle].current_byte % SECTOR_SIZE == 0){
+				if(files[handle].is_final_cluster == true){
+					files[handle].is_final_cluster = false;
+				}
+			}
+	}
+	return written_bytes;
 }
