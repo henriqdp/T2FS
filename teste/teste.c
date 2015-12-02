@@ -33,6 +33,14 @@ int main(int argc, char **argv){
    		continue;
    	}
 
+      if(strcmp(command, "create") == 0){
+         scanf("%s", argument);
+         FILE2 arquivo = create2(argument);
+         if(arquivo < 0)
+            printf("ERRO: caminho do diretorio ou nome do arquivo invalido.\n");
+         continue;
+      }
+
       if(strcmp(command, "show") == 0){
          scanf("%s", argument);
          FILE2 arquivo = open2(argument);

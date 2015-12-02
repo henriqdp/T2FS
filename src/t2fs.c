@@ -24,10 +24,10 @@ FILE2 create2 (char *filename){
   if(!superblock_read){
     read_superblock();
   }
-  if(!superblock_read){
-    read_superblock();
-  }
   Bool split = split_path(filename);
+  char *filename_aux = (char *) calloc(1024, sizeof(char));
+  memset(filename_aux, '\0', 1024);
+  strcpy(filename_aux, filename);
   int result;
   if(split){
     if(DEBUG_ON){
@@ -36,13 +36,15 @@ FILE2 create2 (char *filename){
       printf("Nome do arquivo: ");
       puts(filename + strlen(filename) + 1);
     }
-    result = change_dir(filename, false);
+    result = change_dir(filename_aux, false);
+    free(filename_aux);
     if(result < 0)
       return -1;
     else
-      return 0;
+      return (FILE2) create_relative(filename + strlen(filename) + 1, CREATE_FILE);
   }
   else{
+    free(filename_aux);
     if(DEBUG_ON){
       printf("Nome do arquivo a ser criado: ");
         puts(filename);
@@ -50,13 +52,12 @@ FILE2 create2 (char *filename){
 
     if(filename[0] == '/'){
       set_working_to_root();
-      return create_relative(pathname + 1);
+      return (FILE2) create_relative(filename + 1, CREATE_FILE);
     }
     else{
       mirror_paths(CURR_TO_WORK);
-      return create_relative(pathname);
+      return (FILE2) create_relative(filename, CREATE_FILE);
     }
-    return 0;
   }
 }
 
@@ -71,7 +72,9 @@ FILE2 open2 (char *filename){
   if(!superblock_read){
     read_superblock();
   }
-
+  char *filename_aux = (char *) calloc(1024, sizeof(char));
+  memset(filename_aux, '\0', 1024);
+  strcpy(filename_aux, filename);
   Bool split = split_path(filename);
   int result;
   if(split){
@@ -81,13 +84,15 @@ FILE2 open2 (char *filename){
       printf("Nome do arquivo: ");
       puts(filename + strlen(filename) + 1);
     }
-    result = change_dir(filename, false);
+    result = change_dir(filename_aux, false);
+    free(filename_aux);
     if(result < 0)
       return -1;
     else
       return open_relative(filename + strlen(filename) + 1);
   }
   else{
+    free(filename_aux);
     if(DEBUG_ON){
       printf("Nome do arquivo a ser aberto: ");
         puts(filename);
@@ -162,6 +167,9 @@ int mkdir2 (char *pathname){
     read_superblock();
   }
   Bool split = split_path(pathname);
+  char *pathname_aux = (char *) calloc(1024, sizeof(char));
+  memset(pathname_aux, '\0', 1014);
+  strcpy(pathname_aux, pathname);
   int result;
   if(split){
     if(DEBUG_ON){
@@ -170,13 +178,15 @@ int mkdir2 (char *pathname){
       printf("Nome do diretorio: ");
       puts(pathname + strlen(pathname) + 1);
     }
-    result = change_dir(pathname, false);
+    result = change_dir(pathname_aux, false);
+    free(pathname_aux);
     if(result < 0)
       return -1;
     else
-      return mkdir_relative(pathname + strlen(pathname) + 1);
+      return create_relative(pathname + strlen(pathname) + 1, CREATE_DIR);
   }
   else{
+    free(pathname_aux);
     if(DEBUG_ON){
       printf("Nome do diretorio a ser criado: ");
         puts(pathname);
@@ -184,11 +194,11 @@ int mkdir2 (char *pathname){
 
     if(pathname[0] == '/'){
       set_working_to_root();
-      return mkdir_relative(pathname + 1);
+      return create_relative(pathname + 1, CREATE_DIR);
     }
     else{
       mirror_paths(CURR_TO_WORK);
-      return mkdir_relative(pathname);
+      return create_relative(pathname, CREATE_DIR);
     }
   }
 }
@@ -242,7 +252,7 @@ int readdir2 (DIR2 handle, DIRENT2 *dentry){
       return -1;
     }
     else{
-      return read_next_entry(&(directories[handle]), dentry, &cluster);
+      return read_next_entry(&(directories[handle-1]), dentry, &cluster);
     }
   }
 }
