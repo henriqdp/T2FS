@@ -110,7 +110,6 @@ int main(int argc, char **argv){
       }
 
       if(strcmp(command, "append") == 0){
-         printf("\nEITA!!\n");
          scanf("%s", argument);
          FILE2 file = open2(argument);
          if(file >= 0){

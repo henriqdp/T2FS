@@ -12,6 +12,19 @@
 #define FREE_CLUSTER  0
 #define BAD_CLUSTER   65534
 
+
+//definicao de erros diversos
+#define ERR_END_OF_DIRECTORY     -1
+#define ERR_NOT_A_DIRECTORY      -2
+#define ERR_HANDLE_NOT_AVAILABLE -3
+#define ERR_ROOT_DIR_FULL        -4
+#define ERR_FAT_FULL             -5
+#define ERR_DIR_FULL             -6
+#define ERR_INVALID_ENTRY_NAME   -7
+#define ERR_BUFFER_NULL          -8
+#define ERR_ENTRY_ALREADY_EXISTS -9
+
+
 typedef int FILE2;
 typedef int DIR2;
 

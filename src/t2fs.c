@@ -5,6 +5,71 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define CREATE_FUNCTION 10
+#define DELETE_FUNCTION 12
+#define OPEN_FUNCTION   13
+#define MKDIR_FUNCTION  14
+#define RMDIR_FUNCTION  15
+
+#define ERR_INVALID_PATH           -1
+#define ERR_INVALID_FUNCTION_CODE  -1
+#define ERR_FOLDER_NOT_EMPTY       -2
+
+int split_and_execute(int function, char *path){
+if(!superblock_read){
+    read_superblock();
+  }
+  Bool split = split_path(path);
+  char *path_aux = (char *) calloc(1024, sizeof(char));
+  char *argument;
+  memset(path_aux, '\0', 1024);
+  strcpy(path_aux, path);
+  int result;
+  if(split){
+    if(DEBUG_ON){
+      printf("Diretorio no qual sera executada a funcao: ");
+      puts(path);
+      printf("Nome do arquivo/diretorio: ");
+      puts(path + strlen(path) + 1);
+    }
+    result = change_dir(path_aux, false);
+    free(path_aux);
+    if(result < 0)
+      return ERR_INVALID_PATH;
+    else
+      argument = path  + strlen(path) + 1;
+  }
+  else{
+    free(path_aux);
+    if(DEBUG_ON){
+      printf("Nome do arquivo/diretorio: ");
+        puts(path);
+      }
+
+    if(path[0] == '/'){
+      set_working_to_root();
+      argument = path + 1;
+    }
+    else{
+      mirror_paths(CURR_TO_WORK);
+      argument = path;
+    }
+  }
+  switch(function){
+    case CREATE_FUNCTION:
+      return create_relative(argument, CREATE_FILE);
+    case DELETE_FUNCTION:
+      return remove_relative(argument, REMOVE_FILE);
+    case OPEN_FUNCTION:
+      return open_relative(argument);
+    case MKDIR_FUNCTION:
+      return create_relative(argument, CREATE_DIR);
+    case RMDIR_FUNCTION:
+      return remove_relative(argument, REMOVE_DIR);
+  }
+  return ERR_INVALID_FUNCTION_CODE;
+}
+
 int identify2 (char *name, int size){
   if(!superblock_read){
     read_superblock();
@@ -21,126 +86,15 @@ int identify2 (char *name, int size){
 }
 
 FILE2 create2 (char *filename){
-  if(!superblock_read){
-    read_superblock();
-  }
-  Bool split = split_path(filename);
-  char *filename_aux = (char *) calloc(1024, sizeof(char));
-  memset(filename_aux, '\0', 1024);
-  strcpy(filename_aux, filename);
-  int result;
-  if(split){
-    if(DEBUG_ON){
-      printf("Diretorio no qual sera criado o arquivo: ");
-      puts(filename);
-      printf("Nome do arquivo: ");
-      puts(filename + strlen(filename) + 1);
-    }
-    result = change_dir(filename_aux, false);
-    free(filename_aux);
-    if(result < 0)
-      return -1;
-    else
-      return (FILE2) create_relative(filename + strlen(filename) + 1, CREATE_FILE);
-  }
-  else{
-    free(filename_aux);
-    if(DEBUG_ON){
-      printf("Nome do arquivo a ser criado: ");
-        puts(filename);
-      }
-
-    if(filename[0] == '/'){
-      set_working_to_root();
-      return (FILE2) create_relative(filename + 1, CREATE_FILE);
-    }
-    else{
-      mirror_paths(CURR_TO_WORK);
-      return (FILE2) create_relative(filename, CREATE_FILE);
-    }
-  }
+  return (FILE2) split_and_execute(CREATE_FUNCTION, filename);
 }
 
 int delete2 (char *filename){
-  if(!superblock_read){
-    read_superblock();
-  }
-    Bool split = split_path(filename);
-  char *filename_aux = (char *) calloc(1024, sizeof(char));
-  memset(filename_aux, '\0', 1014);
-  strcpy(filename_aux, filename);
-  int result;
-  if(split){
-    if(DEBUG_ON){
-      printf("Diretorio no qual sera criado o arquivo: ");
-      puts(filename);
-      printf("Nome do diretorio: ");
-      puts(filename + strlen(filename) + 1);
-    }
-    result = change_dir(filename_aux, false);
-    free(filename_aux);
-    if(result < 0)
-      return -1;
-    else
-      return remove_relative(filename + strlen(filename) + 1, REMOVE_FILE);
-  }
-  else{
-    free(filename_aux);
-    if(DEBUG_ON){
-      printf("Nome do diretorio a ser criado: ");
-        puts(filename);
-      }
-
-    if(filename[0] == '/'){
-      set_working_to_root();
-      return remove_relative(filename + 1, REMOVE_FILE);
-    }
-    else{
-      mirror_paths(CURR_TO_WORK);
-      return remove_relative(filename, REMOVE_FILE);
-    }
-  }
+  return split_and_execute(DELETE_FUNCTION, filename);
 }
 
 FILE2 open2 (char *filename){
-  if(!superblock_read){
-    read_superblock();
-  }
-  char *filename_aux = (char *) calloc(1024, sizeof(char));
-  memset(filename_aux, '\0', 1024);
-  strcpy(filename_aux, filename);
-  Bool split = split_path(filename);
-  int result;
-  if(split){
-    if(DEBUG_ON){
-      printf("Diretorio no qual o arquivo se encontra: ");
-      puts(filename);
-      printf("Nome do arquivo: ");
-      puts(filename + strlen(filename) + 1);
-    }
-    result = change_dir(filename_aux, false);
-    free(filename_aux);
-    if(result < 0)
-      return -1;
-    else
-      return open_relative(filename + strlen(filename) + 1);
-  }
-  else{
-    free(filename_aux);
-    if(DEBUG_ON){
-      printf("Nome do arquivo a ser aberto: ");
-        puts(filename);
-      }
-
-    if(filename[0] == '/'){
-      set_working_to_root();
-      return open_relative(filename + 1);
-    }
-    else{
-      mirror_paths(CURR_TO_WORK);
-      return open_relative(filename);
-    }
-  }
+  return (FILE2) split_and_execute(OPEN_FUNCTION, filename);
 }
 
 int close2 (FILE2 handle){
@@ -206,44 +160,7 @@ int seek2 (FILE2 handle, unsigned int offset){
 }
 
 int mkdir2 (char *pathname){
-  if(!superblock_read){
-    read_superblock();
-  }
-  Bool split = split_path(pathname);
-  char *pathname_aux = (char *) calloc(1024, sizeof(char));
-  memset(pathname_aux, '\0', 1014);
-  strcpy(pathname_aux, pathname);
-  int result;
-  if(split){
-    if(DEBUG_ON){
-      printf("Diretorio no qual sera criado o arquivo: ");
-      puts(pathname);
-      printf("Nome do diretorio: ");
-      puts(pathname + strlen(pathname) + 1);
-    }
-    result = change_dir(pathname_aux, false);
-    free(pathname_aux);
-    if(result < 0)
-      return -1;
-    else
-      return create_relative(pathname + strlen(pathname) + 1, CREATE_DIR);
-  }
-  else{
-    free(pathname_aux);
-    if(DEBUG_ON){
-      printf("Nome do diretorio a ser criado: ");
-        puts(pathname);
-      }
-
-    if(pathname[0] == '/'){
-      set_working_to_root();
-      return create_relative(pathname + 1, CREATE_DIR);
-    }
-    else{
-      mirror_paths(CURR_TO_WORK);
-      return create_relative(pathname, CREATE_DIR);
-    }
-  }
+  return split_and_execute(MKDIR_FUNCTION, pathname);
 }
 
 int rmdir2 (char *pathname){
@@ -255,53 +172,22 @@ int rmdir2 (char *pathname){
   char *pathname_aux = (char *) calloc(1024, sizeof(char));
   memset(pathname_aux, '\0', 1014);
   strcpy(pathname_aux, pathname);
-
   int result = change_dir(pathname, false);
   int number_of_entries = 0;
   DIRENT2 entry;
   WORD clusterNo;
   if(result < 0)
-    return -1;
+    return ERR_INVALID_PATH;
   else{
     while(read_next_entry(working_directory, &entry, &clusterNo) != -1){
       number_of_entries++;
     }
-    printf("Numero de entradas no diretorio: %d\n", number_of_entries);
     if(number_of_entries > 2){
-      return -1;
+      return ERR_FOLDER_NOT_EMPTY;
     }
   }
-   Bool split = split_path(pathname);
-  if(split){
-    if(DEBUG_ON){
-      printf("Diretorio no qual sera criado o arquivo: ");
-      puts(pathname);
-      printf("Nome do diretorio: ");
-      puts(pathname + strlen(pathname) + 1);
-    }
-    result = change_dir(pathname_aux, false);
-    free(pathname_aux);
-    if(result < 0)
-      return -1;
-    else
-      return remove_relative(pathname + strlen(pathname) + 1, REMOVE_DIR);
-  }
-  else{
-    free(pathname_aux);
-    if(DEBUG_ON){
-      printf("Nome do diretorio a ser criado: ");
-        puts(pathname);
-      }
-
-    if(pathname[0] == '/'){
-      set_working_to_root();
-      return remove_relative(pathname + 1, REMOVE_DIR);
-    }
-    else{
-      mirror_paths(CURR_TO_WORK);
-      return remove_relative(pathname, REMOVE_DIR);
-    }
-  }
+  free(pathname_aux);
+  return split_and_execute(RMDIR_FUNCTION, pathname);
 }
 
 DIR2 opendir2 (char *pathname){
@@ -316,7 +202,7 @@ DIR2 opendir2 (char *pathname){
   if(result < 0)
     return -1;
   else{
-    DIR2 result = (DIR2) get_handler(DIR_HANDLER);
+    DIR2 result = (DIR2) get_handle(DIR_HANDLE);
     if(result < 0)
       return -1;
     else{
